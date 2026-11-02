@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="ฝึกเขียน ฟัง และพูดภาษาญี่ปุ่น (ฮิรางานะ คาตาคานะ คำศัพท์) บน iPad ด้วย Apple Pencil พร้อมระบบเลเวล ยศ และภารกิจประจำวัน">
+<meta name="theme-color" content="#EEF1EB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14171D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="かなノート">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>かなノート — ฝึกเขียน ฟัง พูดภาษาญี่ปุ่น</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand">かなノート <small>ฝึกเขียน ฟัง พูดภาษาญี่ปุ่น</small></div>
+    <div class="seg" role="group" aria-label="โหมดฝึก" id="tabs">
+      <button data-tab="write" aria-pressed="true">เขียน<span class="jp">書く</span></button>
+      <button data-tab="listen" aria-pressed="false">ฟัง<span class="jp">聞く</span></button>
+      <button data-tab="speak" aria-pressed="false">พูด<span class="jp">話す</span></button>
+      <button data-tab="quest" aria-pressed="false">ภารกิจ<span class="jp">修行</span><span class="badge" id="q-badge" hidden></span></button>
+    </div>
+    <button class="player" id="player">
+      <span id="p-seal"></span>
+      <span class="p-meta">
+        <span class="p-name" id="p-name">ผู้ฝึก</span>
+        <span class="p-lv"><b id="p-lv">LV 1</b><span class="xpbar"><i id="p-xp"></i></span></span>
+      </span>
+    </button>
+  </div>
+  <div class="bar sub">
+    <div class="seg" role="group" aria-label="ชุดตัวอักษร" id="sets">
+      <button data-set="hira" aria-pressed="true">ฮิรางานะ<span class="jp">あ</span></button>
+      <button data-set="kata" aria-pressed="false">คาตาคานะ<span class="jp">ア</span></button>
+      <button data-set="vocab" aria-pressed="false">คำศัพท์<span class="jp">語</span></button>
+    </div>
+    <button class="chip" id="daku" aria-pressed="false">รวมเสียง ゛゜</button>
+    <button class="chip" id="slow" aria-pressed="true">เสียงพูดช้า</button>
+    <span class="hint" id="progress"></span>
+  </div>
+</header>
+
+<main>
+  <!-- เขียน -->
+  <section class="view on" id="v-write">
+    <div class="write">
+      <div class="stage">
+        <div class="sheet" id="sheet">
+          <canvas id="trace"></canvas>
+          <svg class="guides" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="50" y1="0" x2="50" y2="100" stroke="var(--guide)" stroke-width=".35" stroke-dasharray="1.6 1.6"/>
+            <line x1="0" y1="50" x2="100" y2="50" stroke="var(--guide)" stroke-width=".35" stroke-dasharray="1.6 1.6"/>
+          </svg>
+          <canvas id="ink" aria-label="ช่องเขียนตัวอักษร"></canvas>
+          <svg class="mark" id="mark" viewBox="0 0 400 400" aria-hidden="true"></svg>
+        </div>
+        <div class="wordtrack" id="wordtrack"></div>
+        <div class="tools">
+          <button class="btn" id="w-listen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>ฟังเสียง</button>
+          <button class="btn" id="w-undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>ย้อนเส้น</button>
+          <button class="btn" id="w-clear">ล้างช่อง</button>
+          <button class="btn shu" id="w-check">ตรวจ</button>
+          <button class="btn primary" id="w-next">ตัวถัดไป</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="info">
+          <div class="ref" id="ref">あ</div>
+          <div>
+            <div class="romaji" id="romaji">a</div>
+            <div class="meaning" id="meaning"></div>
+          </div>
+        </div>
+        <div>
+          <div class="modes" role="group" aria-label="วิธีฝึกเขียน" id="wmodes">
+            <button class="chip" data-wm="trace" aria-pressed="true">เขียนทับรอย</button>
+            <button class="chip" data-wm="copy" aria-pressed="false">ดูแล้วเขียนเอง</button>
+            <button class="chip" data-wm="dict" aria-pressed="false">ฟังแล้วเขียน</button>
+          </div>
+          <p class="hint" id="wm-hint" style="margin-top:8px"></p>
+        </div>
+        <div class="feedback" id="feedback" aria-live="polite"></div>
+        <div class="picker">
+          <h3 id="picker-title">เลือกตัวอักษร</h3>
+          <div id="picker"></div>
+          <div class="legend"><span class="l1">はなまる 85 คะแนนขึ้นไป</span><span class="l2">ผ่าน 65 คะแนนขึ้นไป</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ฟัง -->
+  <section class="view" id="v-listen">
+    <div class="drill">
+      <p class="hint">ฟังเสียงแล้วแตะตัวอักษรที่ได้ยิน กดปุ่มกลมเพื่อฟังซ้ำได้</p>
+      <button class="play" id="l-play" aria-label="ฟังเสียงอีกครั้ง"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg></button>
+      <div class="choices" id="l-choices"></div>
+      <div class="feedback" id="l-feedback" aria-live="polite"></div>
+      <div class="stats"><span>ถูกติดกัน <b id="l-streak">0</b></span><span>ถูก <b id="l-right">0</b> จาก <b id="l-total">0</b></span></div>
+      <button class="btn primary" id="l-next">ข้อถัดไป</button>
+    </div>
+  </section>
+
+  <!-- พูด -->
+  <section class="view" id="v-speak">
+    <div class="drill">
+      <div class="card">
+        <div class="big" id="s-text">ねこ</div>
+        <div class="romaji" id="s-romaji">neko</div>
+        <div class="meaning" id="s-meaning"></div>
+      </div>
+      <div class="tools">
+        <button class="btn" id="s-model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>ฟังตัวอย่าง</button>
+        <button class="btn shu" id="s-recog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg><span id="s-recog-label">ให้ระบบฟังฉันพูด</span></button>
+        <button class="btn" id="s-rec">อัดเสียงตัวเอง</button>
+      </div>
+      <div class="heard" id="s-heard" aria-live="polite"></div>
+      <audio id="s-audio" controls hidden></audio>
+      <div class="tools">
+        <button class="btn" id="s-again">ฝึกอีกรอบ</button>
+        <button class="btn" id="s-ok">พูดได้แล้ว</button>
+        <button class="btn primary" id="s-next">คำถัดไป</button>
+      </div>
+      <p class="hint" id="s-note">ทิป: คำศัพท์ทั้งคำให้ผลการฟังที่แม่นกว่าตัวอักษรเดี่ยว เพราะระบบมักแปลงเสียงสั้น ๆ เป็นคันจิ</p>
+    </div>
+  </section>
+
+  <!-- ภารกิจ & โปรไฟล์ (เติมโดย js/game.js) -->
+  <section class="view" id="v-quest"></section>
+</main>
+
+<dialog id="namedlg" aria-labelledby="name-title">
+  <h2 id="name-title">ยินดีต้อนรับสู่ かなノート</h2>
+  <p class="hint">ตั้งชื่อผู้ฝึกของคุณ ชื่อนี้จะแสดงคู่กับ LV และยศ</p>
+  <input id="name-input" maxlength="20" autocomplete="nickname" placeholder="เช่น ฮานะ" aria-label="ชื่อผู้ฝึก">
+  <button class="btn shu" id="name-save">เริ่มฝึก</button>
+</dialog>
+
+<dialog id="lvdlg" aria-label="เลเวลอัป">
+  <div id="lv-body"></div>
+  <button class="btn primary" id="lv-close">ฝึกต่อ</button>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="js/data.js"></script>
+<script src="js/game.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
